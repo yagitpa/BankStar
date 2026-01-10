@@ -10,6 +10,9 @@ import org.springframework.context.annotation.Primary;
 
 import javax.sql.DataSource;
 
+/**
+ * Базовая конфигурация подключения к базе данных.
+ */
 @Configuration
 @EnableConfigurationProperties
 public class DatabaseConfig {
