@@ -24,7 +24,7 @@ public class GlobalExceptionHandler {
         errorResponse.put("status", HttpStatus.BAD_REQUEST.value());
         errorResponse.put("error", "Bad Request");
         errorResponse.put("message", ex.getMessage());
-        errorResponse.put("path", "/api/v1/recommendation/{user_id}");
+        errorResponse.put("path", "/recommendation/{user_id}");
 
         return ResponseEntity.badRequest().body(errorResponse);
     }
