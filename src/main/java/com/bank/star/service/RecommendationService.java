@@ -28,14 +28,17 @@ public class RecommendationService {
     }
 
     /**
-     * Получает рекомендации продуктов для пользователя
-     *
-     * @param userId идентификатор пользователя
-     * @return список рекомендованных продуктов
+     * Сервис формирования банковских рекомендаций.
      */
     public List<RecommendationDTO> getRecommendations(UUID userId) {
         logger.info("Getting recommendations for User {}", userId);
 
+        /**
+        * Формирует список рекомендаций для клиента.
+        *
+        * @param userId идентификатор клиента
+        * @return список рекомендаций
+        */
         List<RecommendationDTO> recommendations = new ArrayList<>();
 
         for (RecommendationRuleSet ruleSet : ruleSets) {

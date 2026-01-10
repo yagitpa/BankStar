@@ -20,6 +20,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * REST-контроллер для работы с банковскими рекомендациями.
+ * <p>
+ * Предоставляет API для получения персонализированных
+ * предложений для клиента.
+ * </p>
+ */
 @RestController
 @Tag(name = "Recommendation API", description = "API для получения рекомендаций банковских продуктов")
 public class RecommendationController {
@@ -34,10 +41,10 @@ public class RecommendationController {
     }
 
     /**
-     * Получает рекомендации продуктов для пользователя
+     * Возвращает список рекомендаций для клиента.
      *
-     * @param userIdStr строковый идентификатор пользователя
-     * @return ответ с рекомендациями
+     * @param userIdStr идентификатор клиента
+     * @return список рекомендаций
      */
     @GetMapping("/recommendation/{user_id}")
     @Operation(summary = "Получить рекомендацию продуктов",
