@@ -34,11 +34,10 @@
             <artifactId>spring-boot-starter-jdbc</artifactId>
         </dependency>
 
-        <!-- Database - только одна зависимость H2 -->
+        <!-- Database -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
-            <!-- scope не указываем, чтобы была доступна и для runtime, и для тестов -->
         </dependency>
 
         <!-- OpenAPI / Swagger -->
