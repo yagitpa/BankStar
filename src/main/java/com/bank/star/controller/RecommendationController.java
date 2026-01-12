@@ -1,33 +1,35 @@
 package com.bank.star.controller;
 
-import com.bank.star.dto.RecommendationDTO;
 import com.bank.star.dto.ResponseDTO;
-import com.bank.star.exception.InvalidUuidException;
 import com.bank.star.service.RecommendationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 import java.util.UUID;
 
 /**
  * REST-контроллер для работы с банковскими рекомендациями.
+ * Контроллер является плоским и не содержит бизнес-логики.
  */
 @RestController
-@RequiredArgsConstructor
-@Slf4j
 @Tag(name = "Recommendation API", description = "API для получения рекомендаций банковских продуктов")
 public class RecommendationController {
 
+    private static final Logger log = LoggerFactory.getLogger(RecommendationController.class);
+
     private final RecommendationService recommendationService;
+
+    public RecommendationController(RecommendationService recommendationService) {
+        this.recommendationService = recommendationService;
+    }
 
     /**
      * Возвращает список рекомендаций для клиента.
@@ -43,20 +45,9 @@ public class RecommendationController {
     public ResponseDTO getRecommendations(
             @Parameter(description = "Идентификатор пользователя в формате UUID",
                     example = "cd515076-5d8a-44be-930e-8d4fcb79f42d")
-            @PathVariable("user_id") String userIdStr) {
+            @PathVariable("user_id") UUID userId) {
 
-        log.info("Received recommendation request for user_id: {}", userIdStr);
-
-        UUID userId;
-        try {
-            userId = UUID.fromString(userIdStr);
-        } catch (IllegalArgumentException e) {
-            throw new InvalidUuidException(userIdStr);
-        }
-
-        List<RecommendationDTO> recommendations = recommendationService.getRecommendations(userId);
-        log.info("Returning {} recommendations for User: {}", recommendations.size(), userId);
-
-        return new ResponseDTO(userId, recommendations);
+        log.info("Received recommendation request for user_id: {}", userId);
+        return recommendationService.getRecommendationsResponse(userId);
     }
 }

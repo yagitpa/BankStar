@@ -4,6 +4,7 @@ import com.bank.star.dto.DynamicRuleRequestDTO;
 import com.bank.star.dto.DynamicRuleResponseDTO;
 import com.bank.star.entity.DynamicRuleEntity;
 import com.bank.star.exception.RuleAlreadyExistsException;
+import com.bank.star.exception.RuleNotFoundException;
 import com.bank.star.repository.RuleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,93 +26,100 @@ public class DynamicRuleService {
 
     private final RuleRepository ruleRepository;
 
-    /**
-     * Получить все динамические правила
-     */
-    @Cacheable(value = "allRules")
+    @Cacheable("allRules")
     public List<DynamicRuleEntity> getAllRules() {
-        log.info("Fetching all dynamic rules from database");
         return ruleRepository.findAll();
     }
 
     /**
-     * Создать новое правило
+     * Формирует ResponseDTO для получения всех правил
      */
+    public DynamicRuleResponseDTO getAllRulesResponse() {
+        DynamicRuleResponseDTO response = new DynamicRuleResponseDTO();
+        response.setData(
+                getAllRules().stream()
+                             .map(this::convertToDTO)
+                             .toList()
+        );
+        return response;
+    }
+
     @Transactional
     @CacheEvict(value = "allRules", allEntries = true)
-    public DynamicRuleEntity createRule(DynamicRuleRequestDTO request) {
-        log.info("Creating new dynamic rule for Product: {}", request.getProductName());
-
+    public DynamicRuleResponseDTO.DynamicRuleDTO createRuleAndConvert(DynamicRuleRequestDTO request) {
         if (ruleRepository.findByProductId(request.getProductId()).isPresent()) {
             throw new RuleAlreadyExistsException(request.getProductId());
         }
 
-        DynamicRuleEntity entity = new DynamicRuleEntity();
-        entity.setProductName(request.getProductName());
-        entity.setProductId(request.getProductId());
-        entity.setProductText(request.getProductText());
-
-        if (request.getRule() != null) {
-            List<DynamicRuleEntity.QueryCondition> conditions = request.getRule().stream()
-                                                                       .map(dto -> {
-                                                                           DynamicRuleEntity.QueryCondition condition = new DynamicRuleEntity.QueryCondition();
-                                                                           condition.setQuery(dto.getQuery());
-                                                                           condition.setArguments(dto.getArguments());
-                                                                           condition.setNegate(dto.isNegate());
-                                                                           return condition;
-                                                                       })
-                                                                       .toList();
-            entity.setRule(conditions);
-        }
-        return ruleRepository.save(entity);
+        DynamicRuleEntity entity = ruleRepository.save(fromRequest(request));
+        return convertToDTO(entity);
     }
 
-    /**
-     * Удалить правило по product_id
-     */
     @Transactional
     @CacheEvict(value = {"allRules", "ruleByProductId"}, allEntries = true)
-    public void deleteRuleByProductId(UUID productId) {
-        log.info("Deleting dynamic rule for productId: {}", productId);
+    public void deleteRuleWithCheck(UUID productId) {
+        if (ruleRepository.findByProductId(productId).isEmpty()) {
+            throw new RuleNotFoundException(productId);
+        }
         ruleRepository.deleteByProductId(productId);
     }
 
     /**
-     * Получить правило по product_id
+     * Преобразование Entity → DTO
      */
-    @Cacheable(value = "ruleByProductId", key = "#productId")
-    public DynamicRuleEntity getRuleByProductId(UUID productId) {
-        log.info("Fetching dynamic rule for productId: {}", productId);
-        return ruleRepository.findByProductId(productId)
-                             .orElseThrow(() -> new IllegalArgumentException("Rule not found for productId: " + productId));
-    }
-
-    /**
-     * Конвертировать сущность в DTO для ответа
-     */
-    public DynamicRuleResponseDTO.DynamicRuleDTO convertToDTO(DynamicRuleEntity entity) {
+    private DynamicRuleResponseDTO.DynamicRuleDTO convertToDTO(DynamicRuleEntity entity) {
         DynamicRuleResponseDTO.DynamicRuleDTO dto = new DynamicRuleResponseDTO.DynamicRuleDTO();
         dto.setId(entity.getId());
-        dto.setProductName(entity.getProductName());
         dto.setProductId(entity.getProductId());
+        dto.setProductName(entity.getProductName());
         dto.setProductText(entity.getProductText());
 
         if (entity.getRule() != null) {
-            List<DynamicRuleRequestDTO.QueryConditionDTO> conditions = entity.getRule().stream()
-                                                                             .map(condition -> {
-                                                                                 DynamicRuleRequestDTO.QueryConditionDTO conditionDTO = new DynamicRuleRequestDTO.QueryConditionDTO();
-                                                                                 conditionDTO.setQuery(condition.getQuery());
-                                                                                 conditionDTO.setArguments(condition.getArguments());
-                                                                                 conditionDTO.setNegate(condition.isNegate());
-                                                                                 return conditionDTO;
-                                                                             })
-                                                                             .toList();
-            dto.setRule(conditions);
+            dto.setRule(
+                    entity.getRule().stream()
+                          .map(this::convertConditionToDTO)
+                          .toList()
+            );
         }
+
         return dto;
     }
 
-    public boolean existsByProductId(UUID productId) {
-        return ruleRepository.findByProductId(productId).isPresent();
+    /**
+     * Преобразование QueryCondition Entity → DTO
+     */
+    private DynamicRuleRequestDTO.QueryConditionDTO convertConditionToDTO(DynamicRuleEntity.QueryCondition condition) {
+        DynamicRuleRequestDTO.QueryConditionDTO dto = new DynamicRuleRequestDTO.QueryConditionDTO();
+        dto.setQuery(condition.getQuery());
+        dto.setArguments(condition.getArguments());
+        dto.setNegate(condition.isNegate());
+        return dto;
+    }
+
+    /**
+     * Преобразование RequestDTO → Entity
+     */
+    private DynamicRuleEntity fromRequest(DynamicRuleRequestDTO request) {
+        DynamicRuleEntity entity = new DynamicRuleEntity();
+        entity.setProductId(request.getProductId());
+        entity.setProductName(request.getProductName());
+        entity.setProductText(request.getProductText());
+
+        if (request.getRule() != null) {
+            entity.setRule(
+                    request.getRule().stream()
+                           .map(dto -> {
+                               DynamicRuleEntity.QueryCondition condition =
+                                       new DynamicRuleEntity.QueryCondition();
+                               condition.setQuery(dto.getQuery());
+                               condition.setArguments(dto.getArguments());
+                               condition.setNegate(dto.isNegate());
+                               return condition;
+                           })
+                           .toList()
+            );
+        }
+
+        return entity;
     }
 }
