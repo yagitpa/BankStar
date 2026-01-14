@@ -2,7 +2,7 @@ package com.bank.star.controller;
 
 import com.bank.star.dto.DynamicRuleRequestDTO;
 import com.bank.star.dto.DynamicRuleResponseDTO;
-import com.bank.star.entity.DynamicRuleEntity;
+import com.bank.star.exception.RuleNotFoundException;
 import com.bank.star.service.DynamicRuleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -13,10 +13,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -24,9 +22,9 @@ import java.util.UUID;
  */
 @RestController
 @RequestMapping("/rule")
-@Tag(name = "Dynamic Rule API", description = "API для управления динамическими правилами рекомендаций")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Dynamic Rule API", description = "API для управления динамическими правилами рекомендаций")
 public class RuleController {
 
     private final DynamicRuleService dynamicRuleService;
@@ -35,61 +33,59 @@ public class RuleController {
      * Создать новое динамическое правило
      */
     @PostMapping
-    @Operation(summary = "Создать новое правило",
-            description = "Добавляет новое динамическое правило рекомендаций")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Создать новое правило")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Правило успешно создано"),
-            @ApiResponse(responseCode = "400", description = "Неверные данные запроса")
+            @ApiResponse(responseCode = "201", description = "Правило успешно создано"),
+            @ApiResponse(responseCode = "400", description = "Неверные данные запроса"),
+            @ApiResponse(responseCode = "409", description = "Правило уже существует")
     })
-    public ResponseEntity<DynamicRuleResponseDTO.DynamicRuleDTO> createRule(
+    public DynamicRuleResponseDTO.DynamicRuleDTO createRule(
             @Parameter(description = "Данные для создания правила")
             @Valid @RequestBody DynamicRuleRequestDTO request) {
 
         log.info("Creating new dynamic rule for product: {}", request.getProductName());
-        DynamicRuleEntity entity = dynamicRuleService.createRule(request);
-        DynamicRuleResponseDTO.DynamicRuleDTO response = dynamicRuleService.convertToDTO(entity);
-
-        return ResponseEntity.ok(response);
+        return dynamicRuleService.convertToDTO(dynamicRuleService.createRule(request));
     }
 
     /**
      * Получить все динамические правила
      */
     @GetMapping
-    @Operation(summary = "Получить все правила",
-            description = "Возвращает список всех динамических правил рекомендаций")
+    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Получить все правила")
     @ApiResponse(responseCode = "200", description = "Список правил успешно получен")
-    public ResponseEntity<DynamicRuleResponseDTO> getAllRules() {
+    public DynamicRuleResponseDTO getAllRules() {
 
         log.info("Fetching all dynamic rules");
-        List<DynamicRuleEntity> rules = dynamicRuleService.getAllRules();
-
         DynamicRuleResponseDTO response = new DynamicRuleResponseDTO();
-        List<DynamicRuleResponseDTO.DynamicRuleDTO> ruleDTOs = rules.stream()
-                                                                    .map(dynamicRuleService::convertToDTO)
-                                                                    .toList();
-        response.setData(ruleDTOs);
+        response.setData(dynamicRuleService.getAllRules().stream()
+                                           .map(dynamicRuleService::convertToDTO)
+                                           .toList());
 
-        return ResponseEntity.ok(response);
+        return response;
     }
 
     /**
      * Удалить правило по product_id
      */
     @DeleteMapping("/{product_id}")
-    @Operation(summary = "Удалить правило",
-            description = "Удаляет динамическое правило по идентификатору продукта")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Удалить правило")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "Правило успешно удалено"),
             @ApiResponse(responseCode = "404", description = "Правило не найдено")
     })
-    public ResponseEntity<Void> deleteRule(
+    public void deleteRule(
             @Parameter(description = "Идентификатор продукта", example = "ab138afb-f3ba-4a93-b74f-0fcee86d447f")
             @PathVariable("product_id") UUID productId) {
 
         log.info("Deleting dynamic rule for productId: {}", productId);
-        dynamicRuleService.deleteRuleByProductId(productId);
 
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        if (!dynamicRuleService.existsByProductId(productId)) {
+            throw new RuleNotFoundException(productId);
+        }
+
+        dynamicRuleService.deleteRuleByProductId(productId);
     }
 }

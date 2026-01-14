@@ -1,5 +1,6 @@
 package com.bank.star.repository;
 
+import com.bank.star.exception.DatabaseQueryException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,7 +53,8 @@ public class RecommendationRepository {
 
         } catch (DataAccessException e) {
             logger.error("Error checking Invest500 rule for User {}", userId, e);
-            return false;
+            throw new DatabaseQueryException(
+                    String.format("Ошибка при проверке правила Invest500 для пользователя %s", userId), e);
         }
     }
 
@@ -88,7 +90,8 @@ public class RecommendationRepository {
 
         } catch (DataAccessException e) {
             logger.error("Error checking TopSaving rule for User {}", userId, e);
-            return false;
+            throw new DatabaseQueryException(
+                    String.format("Ошибка при проверке правила TopSaving для пользователя %s", userId), e);
         }
     }
 
@@ -121,7 +124,8 @@ public class RecommendationRepository {
 
         } catch (DataAccessException e) {
             logger.error("Error checking SimpleLoan rule for User {}", userId, e);
-            return false;
+            throw new DatabaseQueryException(
+                    String.format("Ошибка при проверке правила SimpleLoan для пользователя %s", userId), e);
         }
     }
 
@@ -131,18 +135,20 @@ public class RecommendationRepository {
     public boolean checkUserOf(UUID userId, String productType) {
         try {
             String sql = """
-                    SELECT EXISTS (
-                        SELECT 1 FROM TRANSACTIONS t 
-                        JOIN PRODUCTS p ON t.PRODUCT_ID = p.ID 
-                        WHERE t.USER_ID = ? AND p.TYPE = ?
-                    ) AS result
-                    """;
+                SELECT EXISTS (
+                    SELECT 1 FROM TRANSACTIONS t 
+                    JOIN PRODUCTS p ON t.PRODUCT_ID = p.ID 
+                    WHERE t.USER_ID = ? AND p.TYPE = ?
+                ) AS result
+                """;
 
             Boolean result = jdbcTemplate.queryForObject(sql, Boolean.class, userId, productType);
             return Boolean.TRUE.equals(result);
         } catch (DataAccessException e) {
             logger.error("Error checking USER_OF query for User {} and productType {}", userId, productType, e);
-            return false;
+            throw new DatabaseQueryException(
+                    String.format("Ошибка при проверке USER_OF запроса для пользователя %s и типа продукта %s",
+                            userId, productType), e);
         }
     }
 
@@ -162,7 +168,9 @@ public class RecommendationRepository {
             return Boolean.TRUE.equals(result);
         } catch (DataAccessException e) {
             logger.error("Error checking ACTIVE_USER_OF query for User {} and productType {}", userId, productType, e);
-            return false;
+            throw new DatabaseQueryException(
+                    String.format("Ошибка при проверке ACTIVE_USER_OF запроса для пользователя %s и типа продукта %s",
+                            userId, productType), e);
         }
     }
 
@@ -185,7 +193,8 @@ public class RecommendationRepository {
         } catch (DataAccessException e) {
             logger.error("Error checking TRANSACTION_SUM_COMPARE query for User {}: productType={}, transactionType={}, operator={}, constant={}",
                     userId, productType, transactionType, operator, constant, e);
-            return false;
+            throw new DatabaseQueryException(
+                    String.format("Ошибка при проверке TRANSACTION_SUM_COMPARE запроса для пользователя %s", userId), e);
         }
     }
 
@@ -211,7 +220,8 @@ public class RecommendationRepository {
         } catch (DataAccessException e) {
             logger.error("Error checking TRANSACTION_SUM_COMPARE_DEPOSIT_WITHDRAW query for User {}: productType={}, operator={}",
                     userId, productType, operator, e);
-            return false;
+            throw new DatabaseQueryException(
+                    String.format("Ошибка при проверке TRANSACTION_SUM_COMPARE_DEPOSIT_WITHDRAW запроса для пользователя %s", userId), e);
         }
     }
 }

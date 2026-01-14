@@ -3,6 +3,7 @@ package com.bank.star.service;
 import com.bank.star.dto.DynamicRuleRequestDTO;
 import com.bank.star.dto.DynamicRuleResponseDTO;
 import com.bank.star.entity.DynamicRuleEntity;
+import com.bank.star.exception.RuleAlreadyExistsException;
 import com.bank.star.repository.RuleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +41,10 @@ public class DynamicRuleService {
     @CacheEvict(value = "allRules", allEntries = true)
     public DynamicRuleEntity createRule(DynamicRuleRequestDTO request) {
         log.info("Creating new dynamic rule for Product: {}", request.getProductName());
+
+        if (ruleRepository.findByProductId(request.getProductId()).isPresent()) {
+            throw new RuleAlreadyExistsException(request.getProductId());
+        }
 
         DynamicRuleEntity entity = new DynamicRuleEntity();
         entity.setProductName(request.getProductName());
@@ -104,5 +109,9 @@ public class DynamicRuleService {
             dto.setRule(conditions);
         }
         return dto;
+    }
+
+    public boolean existsByProductId(UUID productId) {
+        return ruleRepository.findByProductId(productId).isPresent();
     }
 }
