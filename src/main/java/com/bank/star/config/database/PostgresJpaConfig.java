@@ -15,6 +15,11 @@ import javax.sql.DataSource;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * JPA-конфигурация для PostgreSQL.
+ * <p>
+ * Настраивает EntityManager, TransactionManager и Hibernate свойства.
+ */
 @Configuration
 @EnableTransactionManagement
 @EntityScan(basePackages = "com.bank.star.entity")
