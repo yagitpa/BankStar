@@ -68,20 +68,17 @@ public class RecommendationController {
             return ResponseEntity.ok(response);
 
         } catch (IllegalArgumentException e) {
-            // Это исключение может быть как от UUID.fromString, так и от базы данных
-            // Давайте проверим сообщение
+
             if (e.getMessage() != null && e.getMessage().contains("Invalid input")) {
                 logger.error("Invalid UUID format: {}", userIdStr);
                 return ResponseEntity.badRequest()
                                      .body(new ResponseDTO(null, Collections.emptyList()));
             } else {
                 logger.error("Database error for user_id: {}", userIdStr, e);
-                // Возвращаем пустой список, а не ошибку 500
                 return ResponseEntity.ok(new ResponseDTO(null, Collections.emptyList()));
             }
         } catch (Exception e) {
             logger.error("Unexpected error processing request for user_id: {}", userIdStr, e);
-            // Возвращаем пустой список вместо ошибки 500
             return ResponseEntity.ok(new ResponseDTO(null, Collections.emptyList()));
         }
     }

@@ -124,4 +124,94 @@ public class RecommendationRepository {
             return false;
         }
     }
+
+    /**
+     * Проверка USER_OF запроса
+     */
+    public boolean checkUserOf(UUID userId, String productType) {
+        try {
+            String sql = """
+                    SELECT EXISTS (
+                        SELECT 1 FROM TRANSACTIONS t 
+                        JOIN PRODUCTS p ON t.PRODUCT_ID = p.ID 
+                        WHERE t.USER_ID = ? AND p.TYPE = ?
+                    ) AS result
+                    """;
+
+            Boolean result = jdbcTemplate.queryForObject(sql, Boolean.class, userId, productType);
+            return Boolean.TRUE.equals(result);
+        } catch (DataAccessException e) {
+            logger.error("Error checking USER_OF query for User {} and productType {}", userId, productType, e);
+            return false;
+        }
+    }
+
+    /**
+     * Проверка ACTIVE_USER_OF запроса
+     */
+    public boolean checkActiveUserOf(UUID userId, String productType) {
+        try {
+            String sql = """
+                    SELECT COUNT(*) >= 5 AS result
+                    FROM TRANSACTIONS t 
+                    JOIN PRODUCTS p ON t.PRODUCT_ID = p.ID 
+                    WHERE t.USER_ID = ? AND p.TYPE = ?
+                    """;
+
+            Boolean result = jdbcTemplate.queryForObject(sql, Boolean.class, userId, productType);
+            return Boolean.TRUE.equals(result);
+        } catch (DataAccessException e) {
+            logger.error("Error checking ACTIVE_USER_OF query for User {} and productType {}", userId, productType, e);
+            return false;
+        }
+    }
+
+    /**
+     * Проверка TRANSACTION_SUM_COMPARE запроса
+     */
+    public boolean checkTransactionSumCompare(UUID userId, String productType,
+                                              String transactionType, String operator,
+                                              int constant) {
+        try {
+            String sql = String.format("""
+                    SELECT SUM(amount) %s ? AS result
+                    FROM TRANSACTIONS t 
+                    JOIN PRODUCTS p ON t.PRODUCT_ID = p.ID 
+                    WHERE t.USER_ID = ? AND p.TYPE = ? AND t.TYPE = ?
+                    """, operator);
+
+            Boolean result = jdbcTemplate.queryForObject(sql, Boolean.class, constant, userId, productType, transactionType);
+            return Boolean.TRUE.equals(result);
+        } catch (DataAccessException e) {
+            logger.error("Error checking TRANSACTION_SUM_COMPARE query for User {}: productType={}, transactionType={}, operator={}, constant={}",
+                    userId, productType, transactionType, operator, constant, e);
+            return false;
+        }
+    }
+
+    /**
+     * Проверка TRANSACTION_SUM_COMPARE_DEPOSIT_WITHDRAW запроса
+     */
+    public boolean checkTransactionSumCompareDepositWithdraw(UUID userId, String productType, String operator) {
+        try {
+            String sql = String.format("""
+                    SELECT (SELECT COALESCE(SUM(amount), 0) 
+                            FROM TRANSACTIONS t 
+                            JOIN PRODUCTS p ON t.PRODUCT_ID = p.ID 
+                            WHERE t.USER_ID = ? AND p.TYPE = ? AND t.TYPE = 'DEPOSIT')
+                           %s
+                           (SELECT COALESCE(SUM(amount), 0) 
+                            FROM TRANSACTIONS t 
+                            JOIN PRODUCTS p ON t.PRODUCT_ID = p.ID 
+                            WHERE t.USER_ID = ? AND p.TYPE = ? AND t.TYPE = 'WITHDRAW') AS result
+                    """, operator);
+
+            Boolean result = jdbcTemplate.queryForObject(sql, Boolean.class, userId, productType, userId, productType);
+            return Boolean.TRUE.equals(result);
+        } catch (DataAccessException e) {
+            logger.error("Error checking TRANSACTION_SUM_COMPARE_DEPOSIT_WITHDRAW query for User {}: productType={}, operator={}",
+                    userId, productType, operator, e);
+            return false;
+        }
+    }
 }
